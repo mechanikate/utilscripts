@@ -1,0 +1,9 @@
+dir="$1"
+if [ -z $1 ]; then
+	dir="."
+fi	
+for file in $dir/*; do
+	echo $file:
+	cat $file
+	echo 
+done
