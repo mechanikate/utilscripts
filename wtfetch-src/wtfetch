@@ -11,7 +11,7 @@ fi
 # Extract DISTRO_ID value from /etc/something-release, e.g. /etc/arch-release for Arch
 export DISTRO=$(cat /etc/*-release 2>/dev/null | grep -Po '(?<=DISTRIB_ID=")(.*)(?=")') 
 # Extract the CPU name from lscpu, while removing extra symbols like (R) for registered trademarks.
-export CPU=$(lscpu | grep -Po '(?<=Model name:).*(?=@.*)' | sed -e 's/(\([Rr]\))//g') 
+export CPU=$(lscpu | grep -Po '(?<=Model name:).*(?=.*)' | sed -e 's/(\([Rr]\))//g') 
 # This next line to get the frequency of the CPU needs a bit more explaining:
 # First, we check the bios_limit file to try to get it there. 
 # If that doesn't work, we try scaling_mex_freq in the same folder.
@@ -38,6 +38,12 @@ export HOSTNAME=$(cat /etc/hostname)
 export SHELL=$(echo $SHELL | grep -Po '[^\/]*$')
 # Get the CPU architecture from uname.
 export ARCH=$(uname -m)
+# Get GPU model
+if [[ $(lspci -k | grep -EA3 'VGA|3D|Display') == *"NVIDIA"* ]]; then
+	export GPU=$(cat /proc/driver/nvidia/gpus/00*/information | grep -Po "(?<=Model\:)[ ]+(.*)")
+elif [[ $(lspci -k | grep -EA3 'VGA|3D|Display') == *"AMD"* ]]; then
+	export GPU=$(lspci -k -d ::03xx | grep -Pom1 "((\[|Subsytem: )?((RX|HD|Radeon) .*)(\])?)" | sed -e 's/\[//' -e 's/\]//')
+fi
 # Finally, print everything out.
 echo Software:
 echo ---------
@@ -54,6 +60,8 @@ echo \ \ \ \ \ \ \ \ \|-\> Architecture: -\> $ARCH
 echo \ \ \ \ \ \ \ \ \\-\> Frequency\: -\> $CPUFREQHZ_FORMATTED \($CPUFREQHZ Hz\)
 echo
 echo RAM:\ \ \ \ \|\-\> $MEMORYUSED_FORMATTED/$MEMORYTOTAL_FORMATTED \($MEMORYUSED_BYTES/$MEMORYTOTAL_BYTES B\)
+echo
+echo GPU:\ \ \ \ \|\-\> $GPU
 # If the user wants all the more set-in-stone numbers (e.g. CPU frequency, but excluding used RAM) then they would add export (and then optionally a directory name). 
 # Here, we check if they want that. If not, then this gets skipped
 if [[ $1 == "export" ]]; then
@@ -82,5 +90,6 @@ if [[ $1 == "export" ]]; then
 	# RAM specs
 	echo $MEMORYTOTAL_BYTES > ./$FOLDER/mem
 	echo $MEMORYTOTAL_FORMATTED >> ./$FOLDER/mem
-
+	# GPU specs
+	echo $GPU > ./$FOLDER/gpu
 fi
